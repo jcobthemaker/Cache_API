@@ -1,0 +1,54 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - REDIS_ADDR=redis:6379
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=loc_user
+      - DB_PASSWORD=password
+      - DB_NAME=cache_api_db
+      - DB_SSLMODE=disable
+    networks:
+      - appnet
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - appnet
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: loc_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: cache_api_db
+    ports:
+      - "5432:5432"
+    networks:
+      - appnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loc_user -d cache_api_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d
+
+
+volumes:
+  pgdata:
+
+networks:
+  appnet:
